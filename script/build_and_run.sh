@@ -14,7 +14,9 @@ APP_MACOS="$APP_CONTENTS/MacOS"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
 
-pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+if [[ "$MODE" != "--build-only" && "$MODE" != "build-only" ]]; then
+  pkill -x "$APP_NAME" >/dev/null 2>&1 || true
+fi
 
 swift build
 BUILD_BINARY="$(swift build --show-bin-path)/$APP_NAME"
@@ -33,6 +35,8 @@ cat >"$INFO_PLIST" <<PLIST
   <string>$APP_NAME</string>
   <key>CFBundleIdentifier</key>
   <string>$BUNDLE_ID</string>
+  <key>CFBundleDisplayName</key>
+  <string>$APP_NAME</string>
   <key>CFBundleName</key>
   <string>$APP_NAME</string>
   <key>CFBundlePackageType</key>
@@ -47,8 +51,12 @@ cat >"$INFO_PLIST" <<PLIST
 </plist>
 PLIST
 
+if [[ "$MODE" == "--build-only" || "$MODE" == "build-only" ]]; then
+  exit 0
+fi
+
 open_app() {
-  /usr/bin/open -n "$APP_BUNDLE"
+  /usr/bin/open "$APP_BUNDLE"
 }
 
 case "$MODE" in

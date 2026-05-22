@@ -24,6 +24,14 @@ From Terminal or Codex, use:
 
 The script builds with SwiftPM, stages `dist/Dot.app`, and launches it as a real macOS app bundle. Once launched, Dot keeps running independently of Xcode until you quit it or stop the process.
 
+To install Dot permanently so it launches at login and launchd restarts it if it exits:
+
+```sh
+./script/install_permanent.sh
+```
+
+That copies `Dot.app` to `/Applications/Dot.app` and registers `~/Library/LaunchAgents/com.v1shay.Dot.plist` with `RunAtLoad` and `KeepAlive`.
+
 ## Hotkey Notes
 
 The global hotkey is registered with Carbon `RegisterEventHotKey`, so no Accessibility permission is normally required. If Option + ` does not advance the line, another app may already own that shortcut; quit the conflicting app and relaunch Dot.

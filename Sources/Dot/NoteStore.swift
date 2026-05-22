@@ -31,8 +31,8 @@ final class NoteStore: ObservableObject {
 
     var menuBarTitle: String {
         let line = currentLine
-        guard line.count > 32 else { return line }
-        return String(line.prefix(31)) + "..."
+        guard line.count > 18 else { return line }
+        return String(line.prefix(17)) + "..."
     }
 
     init(defaults: UserDefaults = .standard) {

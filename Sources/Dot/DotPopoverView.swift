@@ -5,19 +5,13 @@ struct DotPopoverView: View {
     @FocusState private var isEditorFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
             header
 
-            TextEditor(text: $store.note)
-                .font(.system(.body, design: .rounded))
-                .scrollContentBackground(.hidden)
-                .focused($isEditorFocused)
-                .padding(10)
-                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .strokeBorder(.white.opacity(0.16))
-                }
+            HStack(spacing: 10) {
+                noteList
+                editor
+            }
 
             footer
         }
@@ -30,27 +24,73 @@ struct DotPopoverView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            ZStack {
-                Circle()
-                    .fill(.primary.opacity(0.12))
-                    .frame(width: 28, height: 28)
-                Circle()
-                    .fill(.primary)
-                    .frame(width: 8, height: 8)
-            }
+            Image(nsImage: NSImage.dotLogo(size: NSSize(width: 30, height: 30)) ?? NSImage())
+                .resizable()
+                .frame(width: 30, height: 30)
+                .clipShape(Circle())
 
             VStack(alignment: .leading, spacing: 2) {
-                Text(store.currentLine)
+                Text(store.selectedNoteTitle)
                     .font(.headline)
                     .lineLimit(1)
                     .truncationMode(.tail)
 
-                Text("\(store.lines.count) lines")
+                Text("\(store.notes.count) notes / \(store.lines.count) lines")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
 
             Spacer()
+        }
+    }
+
+    private var noteList: some View {
+        VStack(spacing: 8) {
+            List(selection: $store.selectedNoteID) {
+                ForEach(store.notes) { note in
+                    Text(note.title)
+                        .lineLimit(1)
+                        .tag(note.id)
+                }
+            }
+            .listStyle(.sidebar)
+            .scrollContentBackground(.hidden)
+
+            HStack(spacing: 6) {
+                Button {
+                    store.addNote()
+                    isEditorFocused = true
+                } label: {
+                    Image(systemName: "plus")
+                }
+                .help("New note")
+
+                Button(role: .destructive) {
+                    store.deleteSelectedNote()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .help("Delete note")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.small)
+        }
+        .frame(width: 116)
+    }
+
+    private var editor: some View {
+        TextEditor(text: Binding(
+            get: { store.selectedNoteBody },
+            set: { store.selectedNoteBody = $0 }
+        ))
+        .font(.system(.body, design: .rounded))
+        .scrollContentBackground(.hidden)
+        .focused($isEditorFocused)
+        .padding(10)
+        .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .strokeBorder(.white.opacity(0.16))
         }
     }
 
@@ -74,12 +114,12 @@ struct DotPopoverView: View {
 
             Spacer()
 
-            Text("Option + `")
+            Text("Option + ` cycle / Option + H hide")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 8)
                 .padding(.vertical, 5)
-                .background(.thinMaterial, in: Capsule())
+                .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .controlSize(.small)
     }

@@ -2,15 +2,66 @@ import Carbon
 import Foundation
 
 final class GlobalHotKey: ObservableObject {
+    private static var eventHandlerRef: EventHandlerRef?
+    private static var actions: [UInt32: () -> Void] = [:]
+
     private var hotKeyRef: EventHotKeyRef?
-    private var eventHandlerRef: EventHandlerRef?
-    private var action: (() -> Void)?
-    private let hotKeyID = EventHotKeyID(signature: FourCharCode("DOT1"), id: 1)
+    private let hotKeyID: EventHotKeyID
+    private let keyCode: UInt32
+    private let modifiers: UInt32
+
+    static let graveKeyCode = UInt32(kVK_ANSI_Grave)
+    static let hKeyCode = UInt32(kVK_ANSI_H)
+    static let optionModifier = UInt32(optionKey)
+
+    init(signature: String = "DOT1", id: UInt32 = 1, keyCode: UInt32 = GlobalHotKey.graveKeyCode, modifiers: UInt32 = GlobalHotKey.optionModifier) {
+        hotKeyID = EventHotKeyID(signature: FourCharCode(signature), id: id)
+        self.keyCode = keyCode
+        self.modifiers = modifiers
+    }
 
     func register(action: @escaping () -> Void) {
-        self.action = action
+        guard hotKeyRef == nil else {
+            Self.actions[hotKeyID.id] = action
+            return
+        }
 
-        guard hotKeyRef == nil, eventHandlerRef == nil else {
+        Self.installEventHandlerIfNeeded()
+
+        var registeredHotKey: EventHotKeyRef?
+        let registrationStatus = RegisterEventHotKey(
+            keyCode,
+            modifiers,
+            hotKeyID,
+            GetApplicationEventTarget(),
+            0,
+            &registeredHotKey
+        )
+
+        if registrationStatus == noErr {
+            hotKeyRef = registeredHotKey
+            Self.actions[hotKeyID.id] = action
+            NSLog("Dot registered hotkey id \(hotKeyID.id)")
+        } else {
+            NSLog("Dot failed to register hotkey id \(hotKeyID.id) with status \(registrationStatus)")
+        }
+    }
+
+    func unregister() {
+        if let hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+            self.hotKeyRef = nil
+        }
+
+        Self.actions[hotKeyID.id] = nil
+    }
+
+    deinit {
+        unregister()
+    }
+
+    private static func installEventHandlerIfNeeded() {
+        guard eventHandlerRef == nil else {
             return
         }
 
@@ -19,11 +70,10 @@ final class GlobalHotKey: ObservableObject {
             eventKind: UInt32(kEventHotKeyPressed)
         )
 
-        let selfPointer = Unmanaged.passUnretained(self).toOpaque()
         InstallEventHandler(
             GetApplicationEventTarget(),
-            { _, event, userData in
-                guard let event, let userData else {
+            { _, event, _ in
+                guard let event else {
                     return OSStatus(eventNotHandledErr)
                 }
 
@@ -42,53 +92,22 @@ final class GlobalHotKey: ObservableObject {
                     return status
                 }
 
-                let owner = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
-                guard incomingHotKeyID.id == owner.hotKeyID.id,
-                      incomingHotKeyID.signature == owner.hotKeyID.signature else {
+                guard let action = GlobalHotKey.actions[incomingHotKeyID.id] else {
                     return OSStatus(eventNotHandledErr)
                 }
 
                 DispatchQueue.main.async {
-                    owner.action?()
+                    NSLog("Dot received hotkey id \(incomingHotKeyID.id)")
+                    action()
                 }
 
                 return noErr
             },
             1,
             &eventType,
-            selfPointer,
+            nil,
             &eventHandlerRef
         )
-
-        var registeredHotKey: EventHotKeyRef?
-        let registrationStatus = RegisterEventHotKey(
-            UInt32(kVK_ANSI_Grave),
-            UInt32(optionKey),
-            hotKeyID,
-            GetApplicationEventTarget(),
-            0,
-            &registeredHotKey
-        )
-
-        if registrationStatus == noErr {
-            hotKeyRef = registeredHotKey
-        }
-    }
-
-    func unregister() {
-        if let hotKeyRef {
-            UnregisterEventHotKey(hotKeyRef)
-            self.hotKeyRef = nil
-        }
-
-        if let eventHandlerRef {
-            RemoveEventHandler(eventHandlerRef)
-            self.eventHandlerRef = nil
-        }
-    }
-
-    deinit {
-        unregister()
     }
 }
 

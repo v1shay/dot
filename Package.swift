@@ -13,6 +13,9 @@ let package = Package(
     targets: [
         .executableTarget(
             name: "Dot",
+            resources: [
+                .process("Resources")
+            ],
             linkerSettings: [
                 .linkedFramework("Carbon")
             ]

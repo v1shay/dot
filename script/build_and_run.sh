@@ -11,20 +11,32 @@ DIST_DIR="$ROOT_DIR/dist"
 APP_BUNDLE="$DIST_DIR/$APP_NAME.app"
 APP_CONTENTS="$APP_BUNDLE/Contents"
 APP_MACOS="$APP_CONTENTS/MacOS"
+APP_RESOURCES="$APP_CONTENTS/Resources"
 APP_BINARY="$APP_MACOS/$APP_NAME"
 INFO_PLIST="$APP_CONTENTS/Info.plist"
+INSTALL_APP="/Applications/$APP_NAME.app"
+LAUNCH_AGENT="$HOME/Library/LaunchAgents/$BUNDLE_ID.plist"
+USER_LAUNCH_DOMAIN="gui/$(id -u)"
 
 if [[ "$MODE" != "--build-only" && "$MODE" != "build-only" ]]; then
+  launchctl bootout "$USER_LAUNCH_DOMAIN" "$LAUNCH_AGENT" >/dev/null 2>&1 || true
   pkill -x "$APP_NAME" >/dev/null 2>&1 || true
 fi
 
 swift build
-BUILD_BINARY="$(swift build --show-bin-path)/$APP_NAME"
+BUILD_DIR="$(swift build --show-bin-path)"
+BUILD_BINARY="$BUILD_DIR/$APP_NAME"
+RESOURCE_BUNDLE="$BUILD_DIR/${APP_NAME}_${APP_NAME}.bundle"
 
 rm -rf "$APP_BUNDLE"
 mkdir -p "$APP_MACOS"
+mkdir -p "$APP_RESOURCES"
 cp "$BUILD_BINARY" "$APP_BINARY"
 chmod +x "$APP_BINARY"
+
+if [[ -d "$RESOURCE_BUNDLE" ]]; then
+  ditto "$RESOURCE_BUNDLE" "$APP_RESOURCES/$(basename "$RESOURCE_BUNDLE")"
+fi
 
 cat >"$INFO_PLIST" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
@@ -55,13 +67,21 @@ if [[ "$MODE" == "--build-only" || "$MODE" == "build-only" ]]; then
   exit 0
 fi
 
+APP_TO_OPEN="$APP_BUNDLE"
+if [[ -d "$INSTALL_APP" ]]; then
+  rm -rf "$INSTALL_APP"
+  ditto "$APP_BUNDLE" "$INSTALL_APP"
+  APP_TO_OPEN="$INSTALL_APP"
+fi
+
 open_app() {
-  /usr/bin/open "$APP_BUNDLE"
+  /usr/bin/open "$APP_TO_OPEN"
 }
 
 case "$MODE" in
   run)
     open_app
+    echo "$APP_NAME launched from $APP_TO_OPEN"
     ;;
   --debug|debug)
     lldb -- "$APP_BINARY"

@@ -76,9 +76,9 @@ final class StatusBarController: NSObject {
             return
         }
 
-        button.title = " \(store.compactMenuBarTitle)"
+        button.title = store.compactMenuBarTitle.isEmpty ? "" : " \(store.compactMenuBarTitle)"
         button.toolTip = store.currentLine
-        statusItem.length = 104
+        statusItem.length = store.compactMenuBarTitle.isEmpty ? 30 : 104
         statusItem.isVisible = !isHiddenByUser
         NSLog("Dot status item visible=\(statusItem.isVisible) title=\(button.title)")
     }

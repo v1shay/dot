@@ -78,16 +78,15 @@ final class NoteStore: ObservableObject {
 
     var compactMenuBarTitle: String {
         let line = currentLine
-        guard line != "Dot" else { return "DOT" }
+        guard line != "Dot" else { return "" }
 
         let trimmed = line
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         let firstWord = trimmed.split(whereSeparator: { $0.isWhitespace }).first.map(String.init) ?? "DOT"
         let source = firstWord.isEmpty ? "DOT" : firstWord
-        let label = "\(min(currentIndex + 1, max(lines.count, 1))) \(source)"
 
-        return label.count > 11 ? String(label.prefix(10)) + "..." : label
+        return source.count > 11 ? String(source.prefix(10)) + "..." : source
     }
 
     init(defaults: UserDefaults = .standard) {
